@@ -16,8 +16,8 @@ pipeline {
         timeout(time: 10, unit: 'MINUTES') 
         disableConcurrentBuilds()
     }
-    // this is build section
-     stages {
+    // This is build section
+    stages {
         stage('Read Version') {
             steps {
                 script{
@@ -27,7 +27,7 @@ pipeline {
                 }
             }
         }
-        stage('Install dependencies') {
+        stage('Install Dependencies') {
             steps {
                 script{
                     sh """
@@ -36,52 +36,51 @@ pipeline {
                 }
             }
         }
-        stage('Unite Test') {
+        stage('Unit Test') {
             steps {
-                script {
+                script{
                     sh """
-                    npm test
+                        npm test
                     """
                 }
             }
         }
-    // here we need to select scanning tool and send analysis to server
-        stage('Sonar Scan'){
+        //Here you need to select scanner tool and send the analysis to server
+         stage('Sonar Scan'){
             environment {
                 def scannerHome = tool 'sonar-8.0'
             }
             steps {
                 script{
                     withSonarQubeEnv('sonar-server') {
-                        sh "${scannerHome}/bin/sonar-scanner"
+                        sh  "${scannerHome}/bin/sonar-scanner"
                     }
                 }
             }
         }
         stage('Quality Gate') {
             steps {
-                timeout (time: 1, unit: 'HOURS'){
-                    // wait for the quality
-                    //abortpipeline : true will fail the jenkins job if quality gate is 'FAILED'
-                    waitForQualityGate abortPipeline: true
+                timeout(time: 1, unit: 'HOURS') {
+                    // Wait for the quality gate status
+                    // abortPipeline: true will fail the Jenkins job if the quality gate is 'FAILED'
+                    waitForQualityGate abortPipeline: true 
                 }
-            }          
+            }
         }
         stage('Build Image') {
             steps {
                 script{
                     withAWS(region:'us-east-1',credentials:'aws-creds') {
-	                    sh """
-		                        aws ecr get-login-password --region us-east-1 | docker login --username AWS 
-                                --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
-                                docker build -t ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion} .
-                                docer images
-                                docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion}
-	                        """
+                        sh """
+                            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
+                            docker build -t ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion} .
+                            docker images
+                            docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion}
+                        """
+                    }
                 }
             }
         }
-    }
      }
     post{
         always{
