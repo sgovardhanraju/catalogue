@@ -16,6 +16,7 @@ pipeline {
         timeout(time: 10, unit: 'MINUTES') 
         disableConcurrentBuilds()
     }
+    // this is build section
      stages {
         stage('Read Version') {
             steps {
@@ -35,10 +36,41 @@ pipeline {
                 }
             }
         }
+        stage('Unite Test') {
+            steps {
+                script {
+                    sh """
+                    npm test
+                    """
+                }
+            }
+        }
+    // here we need to select scanning tool and send analysis to server
+        stage('Sonar Scan'){
+            environment {
+                def scannerHome = tool 'sonar-8.0'
+            }
+            steps {
+                script{
+                    withSonarQubeEnv('sonar-server') {
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
+                }
+            }
+        }
+        stage('Quality Gate') {
+            steps {
+                timeout (time: 1, unit: 'HOURS'){
+                    // wait for the quality
+                    //abortpipeline : true will fail the jenkins job if quality gate is 'FAILED'
+                    waitForQualityGate abortPipeline: true
+                }
+            }          
+        }
         stage('Build Image') {
             steps {
                 script{
-                    withAWS(region:'us-east-1',credentials:'aws-creds'){
+                    withAWS(region:'us-east-1',credentials:'aws-creds') {
 	                    sh """
 		                        aws ecr get-login-password --region us-east-1 | docker login --username AWS 
                                 --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
